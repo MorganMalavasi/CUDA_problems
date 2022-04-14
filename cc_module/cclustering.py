@@ -1,7 +1,13 @@
+import numpy as np
+import cclustering_cpu as cc_cpu
+import cclustering_gpu as gg_cpu
+
+# constants
+PI = np.pi
+
 class Circleclustering_input_zero:
     """Raised when the input dataset shapes are zero"""
     pass
-
 
 class Circleclustering_wrong_precision_string:
     """Raised when the input precision string is wrong"""
@@ -64,7 +70,7 @@ def CircleClustering(dataset, target = None, precision = None, hardware = None):
         
         # >--------------------------test passed-------------------------------<
         # >--------------------------------------------------------------------<
-        CircleClustering_test_passed(dataset, target, )
+        CircleClustering_test_passed(dataset, target, eps, hardware)
         # >--------------------------------------------------------------------<
 
     except Circleclustering_input_zero:
@@ -84,5 +90,27 @@ def CircleClustering(dataset, target = None, precision = None, hardware = None):
         print("-> cpu")
         print("-> gpu")
         print("leave blanck if you want to leave the algorithm the best decision based on your data")
+    
+
+
+def CircleClustering_test_passed(dataset, target, eps, hardware):
+    # get the thetas
+    numberOfSamplesInTheDataset = dataset.shape[0]
+    theta = 2 * PI * np.random.rand(numberOfSamplesInTheDataset)
+
+    if hardware == "cpu":
+        weights = cc_cpu.computing_weights(dataset)
+        S, C = cc_cpu.C_S(weights, theta)
+        theta = cc_cpu.loop(weights, theta, S, C, eps)
+        return theta, target
+
+    if hardware == "gpu":
+        weights = cc_gpu.computing_weights(dataset)
+        S, C = cc_gpu.C_S(weights, theta)
+        theta = cc_gpu.loop_jit(weights, theta, S, C, eps)
+        return theta, target
+
+    
+        
     
 
