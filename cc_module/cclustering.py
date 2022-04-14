@@ -2,20 +2,34 @@ import numpy as np
 import cclustering_cpu as cc_cpu
 import cclustering_gpu as gg_cpu
 
+from numba import cuda
+
 # constants
 PI = np.pi
 
-class Circleclustering_input_zero:
-    """Raised when the input dataset shapes are zero"""
-    pass
+class Circleclustering_input_zero(Exception):
+    # Constructor method
+    def __init__(self, value):
+        self.value = value
+    # __str__ display function
+    def __str__(self):
+        return(repr(self.value))
+    
+class Circleclustering_wrong_precision_string(Exception):
+    # Constructor method
+    def __init__(self, value):
+        self.value = value
+    # __str__ display function
+    def __str__(self):
+        return(repr(self.value))
 
-class Circleclustering_wrong_precision_string:
-    """Raised when the input precision string is wrong"""
-    pass
-
-class Circleclustering_harware_wrong:
-    """Raised when the input type harware string is wrong"""
-    pass
+class Circleclustering_hardware_wrong(Exception):
+    # Constructor method
+    def __init__(self, value):
+        self.value = value
+    # __str__ display function
+    def __str__(self):
+        return(repr(self.value))
     
 
 def CircleClustering(dataset, target = None, precision = None, hardware = None):
@@ -51,12 +65,18 @@ def CircleClustering(dataset, target = None, precision = None, hardware = None):
     # check the input
     try:
         if dataset.shape[0] == 0 or dataset.shape[1] == 0:
-            raise Circleclustering_input_zero
+            raise Circleclustering_input_zero("The input shape is incorrect...")
         # --------------------------------------------------------------------        
 
         output_str = precision.lower()
         if precision != "high" and precision != "medium" and precision != "low":
-            raise Circleclustering_wrong_precision_string
+            raise Circleclustering_wrong_precision_string("The input string precision is not correct...")
+        elif precision == "high":
+            eps = 0.0001
+        elif precision == "medium":
+            eps = 0.001
+        elif precision == "low":
+            eps = 0.01
         # --------------------------------------------------------------------
 
         if hardware == None:
@@ -70,22 +90,23 @@ def CircleClustering(dataset, target = None, precision = None, hardware = None):
         
         # >--------------------------test passed-------------------------------<
         # >--------------------------------------------------------------------<
-        CircleClustering_test_passed(dataset, target, eps, hardware)
+        return CircleClustering_test_passed(dataset, target, eps, hardware)
         # >--------------------------------------------------------------------<
 
-    except Circleclustering_input_zero:
-        print("The input shape is incorrect...")
+    except Circleclustering_input_zero as error:
+        print('A New Exception occured:', error.value)
         print("dataset need to be of size > 0 with number of features > 0")
 
-    except Circleclustering_wrong_string:
-        print("The input string precision is not correct...")
+    except Circleclustering_wrong_precision_string as error:
+        print('A New Exception occured:', error.value)
         print("It represents the Achievable error threshold ")
         print("you can choose between : ")
         print("-> high")
         print("-> medium")
         print("-> low")
 
-    except Circleclustering_harware_wrong:
+    except Circleclustering_hardware_wrong as error:
+        print('A New Exception occured:', error.value)
         print("Enter one the two possible hardware option : ")
         print("-> cpu")
         print("-> gpu")
@@ -105,12 +126,8 @@ def CircleClustering_test_passed(dataset, target, eps, hardware):
         return theta, target
 
     if hardware == "gpu":
+        print(cuda.detect())
         weights = cc_gpu.computing_weights(dataset)
         S, C = cc_gpu.C_S(weights, theta)
         theta = cc_gpu.loop_jit(weights, theta, S, C, eps)
         return theta, target
-
-    
-        
-    
-

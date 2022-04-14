@@ -1,4 +1,4 @@
-addvecs_codetext = """
+addvecs_codetext_kernel = """
 __global__ void add_vectors_broadcast(float *dest, float *a, float *b, int* SZ)
 {
     const int M = SZ[0];
@@ -33,7 +33,7 @@ __global__ void diagonal_zeros(float *mat, int size)
     }
 """
 
-elementwise_multiplication = """
+elementwise_multiplication_kernel = """
 __global__ void elementwise_multiplication(float *weights, float *theta, float *C, float*S, float cos, float sin, float valueNewTheta, unsigned int thetaSize, unsigned int k)
     {
         int pos = threadIdx.x + blockDim.x * blockIdx.x; 

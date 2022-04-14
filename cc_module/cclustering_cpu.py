@@ -1,4 +1,9 @@
+import numpy as np
+from sklearn.metrics.pairwise import euclidean_distances
+from numpy import linalg
 from numba import jit
+
+
 def computing_weights(dataset):
     weights = euclidean_distances(dataset, dataset)
     return weights / linalg.norm(weights)
@@ -31,14 +36,14 @@ def loop(matrixOfWeights, theta, S, C, eps):
             ''' find a theta that improves the equation '''
             theta[k] = np.arctan(S[k]/C[k])
             if C[k] >= 0:
-                theta[k] += PI
+                theta[k] += np.pi
             elif S[k] > 0:
-                theta[k] += 2*PI
+                theta[k] += 2*np.pi
                 
-            jit_elementwise_multiplication2(matrixOfWeights[k,:], C, S, theta, k, old)
+            jit_elementwise_multiplication(matrixOfWeights[k,:], C, S, theta, k, old)
 
             ''' exit condition '''
-            if min(abs(old - theta[k]), abs(2*PI - old + theta[k])) > eps:
+            if min(abs(old - theta[k]), abs(2*np.pi - old + theta[k])) > eps:
                 ok = True
     
     return theta

@@ -1,11 +1,14 @@
 import math
+import skcuda.linalg as culinalg
+import pycuda.autoinit
+import pycuda.gpuarray as gpuarray
 
 from pycuda.compiler import SourceModule as SM
-from cuda_kernels import addvecs_codetext, diagonal_zeros_kernel
+from cuda_kernels import addvecs_codetext_kernel, diagonal_zeros_kernel, elementwise_multiplication_kernel
 
-addvecs_bcast_gpu = SM(addvecs_codetext).get_function("add_vectors_broadcast")
+addvecs_bcast_gpu = SM(addvecs_codetext_kernel).get_function("add_vectors_broadcast")
 diagonal_zeros_gpu = SM(diagonal_zeros_kernel).get_function("diagonal_zeros")
-elementwise_multiplication = SM(elementwise_multiplication).get_function("elementwise_multiplication")
+elementwise_multiplication = SM(elementwise_multiplication_kernel).get_function("elementwise_multiplication")
 
 def computing_weights(dataset):
     matrixOfWeights = sqsum_adddot(dataset, dataset)
