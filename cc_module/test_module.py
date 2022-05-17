@@ -41,9 +41,9 @@ sample4, l4 = create_dataset_base(samples = 10000, features = 2048, centers = 5,
 sample5, l5 = create_dataset_base(samples = 15000, features = 2048, centers = 5, display = False, n_dataset = 10)
 
 listOfDataset = []
-# listOfDataset.append((sample0, l0))
-# listOfDataset.append((sample1, l1))
-# listOfDataset.append((sample2, l2))
+listOfDataset.append((sample0, l0))
+listOfDataset.append((sample1, l1))
+listOfDataset.append((sample2, l2))
 # listOfDataset.append((sample3, l3))
 # listOfDataset.append((sample4, l4))
 # listOfDataset.append((sample5, l5))
@@ -79,15 +79,20 @@ def testDB(tuple_, precision, testnr):
     
     valuesCPU = copy(tuple_[0])
     valuesGPU = copy(tuple_[0])
+    valueshybrid = copy(tuple_[0])
     
     theta = 2 * PI * rand(tuple_[0].shape[0])
     thetaCPU = copy(theta)
     thetaGPU = copy(theta)
+    thetahybrid = copy(theta)
     
     thetacpu, targetcpu = cclustering.CircleClustering(dataset = valuesCPU, precision = precision, hardware = "cpu", _theta_ = thetaCPU)
     thetagpu, targetgpu = cclustering.CircleClustering(dataset = valuesGPU, precision = precision, hardware = "gpu", _theta_ = thetaGPU)
+    thetahybrid, targethybrid = cclustering.CircleClustering(dataset = valueshybrid, precision = precision, _theta_ = thetahybrid)
     
     assert checkResults(thetacpu, thetagpu)
+    assert checkResults(thetacpu, thetahybrid)
+
     printStringTestPassed()
 
 
@@ -100,7 +105,7 @@ for eachTuple in listOfDataset:
     
     testDB(tuple_ = eachTuple, precision = "low", testnr = 1)
     testDB(tuple_ = eachTuple, precision = "medium", testnr = 2)
-    testDB(tuple_ = eachTuple, precision = "high", testnr = 3)
+    # testDB(tuple_ = eachTuple, precision = "high", testnr = 3)
 
     
     

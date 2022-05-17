@@ -236,3 +236,6 @@ def convert_f32(a):
         return a.astype(np.float32)
     else:
         return a
+
+def getData(weights, S, C):
+    return weights.get(), S.get(), C.get()

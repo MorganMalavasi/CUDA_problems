@@ -90,12 +90,12 @@ def CircleClustering(dataset, target = None, precision = None, hardware = None, 
 
         if hardware == None:
             # automatic search for the hardware
-            hardware = chooseHardware()
+            hardware = "hybrid"
         else:
             hardware = hardware.lower()
             if hardware != "cpu" and hardware != "gpu":
-                raise Circleclustering_harware_wrong
-        # --------------------------------------------------------------------
+                raise Circleclustering_hardware_wrong
+        
         
         
         # >--------------------------test passed-------------------------------<
@@ -132,7 +132,7 @@ def CircleClustering_test_passed(dataset, target, eps, hardware, _theta_ = None)
     else:
         theta = _theta_
     
-    
+
     if hardware == "cpu":
         weights = cc_cpu.computing_weights(dataset)
         S,C = cc_cpu.C_S(weights, theta)
@@ -140,9 +140,21 @@ def CircleClustering_test_passed(dataset, target, eps, hardware, _theta_ = None)
         return theta, target
     
     if hardware == "gpu":
-        weights = cc_gpu.computing_weights(dataset)
-        S,C = cc_gpu.C_S(weights, theta)
-        theta = cc_gpu.loop_gpu(weights, theta, S, C, eps)
+        weights_gpu = cc_gpu.computing_weights(dataset)
+        S_gpu, C_gpu = cc_gpu.C_S(weights_gpu, theta)
+        theta = cc_gpu.loop_gpu(weights_gpu, theta, S_gpu, C_gpu, eps)
         return theta, target
+
+    if hardware == "hybrid":
+        weights_gpu = cc_gpu.computing_weights(dataset)
+        S_gpu, C_gpu = cc_gpu.C_S(weights_gpu, theta)
+        if (weights_gpu.shape[0] > 100000): # redefine the value
+            theta = cc_gpu.loop_gpu(weights_gpu, theta, S_gpu, C_gpu, eps)
+        else:
+            weights, S, C = cc_gpu.getData(weights_gpu, S_gpu, C_gpu)
+            theta = cc_cpu.loop(weights, theta, S, C, eps)
+        return theta, target
+
+
     
     
