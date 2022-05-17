@@ -43,7 +43,5 @@ __global__ void elementwise_multiplication(float *weights, float *theta, float *
         int idx_weight = k * thetaSize + pos;
         C[pos] += (weights[idx_weight] * cos);
         S[pos] += (weights[idx_weight] * sin);
-
-        theta[k] = valueNewTheta;
     }    
 """

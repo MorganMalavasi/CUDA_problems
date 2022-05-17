@@ -1,12 +1,13 @@
 import numpy as np
 import cclustering_cpu as cc_cpu
-import cclustering_gpu as gg_cpu
+import cclustering_gpu as cc_gpu
 
 from numba import cuda
 
 # constants
 PI = np.pi
 
+# create only one exception
 class Circleclustering_input_zero(Exception):
     # Constructor method
     def __init__(self, value):
@@ -32,7 +33,7 @@ class Circleclustering_hardware_wrong(Exception):
         return(repr(self.value))
     
 
-def CircleClustering(dataset, target = None, precision = None, hardware = None):
+def CircleClustering(dataset, target = None, precision = None, hardware = None, _theta_ = None):
     
     """
     Compute the points on the circle representing the dataset
@@ -45,15 +46,23 @@ def CircleClustering(dataset, target = None, precision = None, hardware = None):
         each row being one point.
         The number of columns is the number of features (dimension)
     
-    target  : ndarray
+    target  : ndarray (optional)
         1D Numpy array of int dtype representing the class of each point in
         the dataset
     
-    precision     : string
+    precision     : string (optional)
         Achievable error threshold.
         3 types ->  "high"    (0.0001)
                 ->  "medium"  (0.001)
                 ->  "low"     (0.01)
+
+    hardware    : string (optional)
+        Specific hardware to use
+        2 types -> "cpu"
+                -> "gpu"
+
+    _theta_     : float (optional) 
+        1D Numpy array of float representing the starting random theta
 
     Returns
     -------
@@ -80,6 +89,7 @@ def CircleClustering(dataset, target = None, precision = None, hardware = None):
         # --------------------------------------------------------------------
 
         if hardware == None:
+            # automatic search for the hardware
             hardware = chooseHardware()
         else:
             hardware = hardware.lower()
@@ -90,7 +100,7 @@ def CircleClustering(dataset, target = None, precision = None, hardware = None):
         
         # >--------------------------test passed-------------------------------<
         # >--------------------------------------------------------------------<
-        return CircleClustering_test_passed(dataset, target, eps, hardware)
+        return CircleClustering_test_passed(dataset, target, eps, hardware, _theta_)
         # >--------------------------------------------------------------------<
 
     except Circleclustering_input_zero as error:
@@ -110,24 +120,29 @@ def CircleClustering(dataset, target = None, precision = None, hardware = None):
         print("Enter one the two possible hardware option : ")
         print("-> cpu")
         print("-> gpu")
-        print("leave blanck if you want to leave the algorithm the best decision based on your data")
+        print("leave blank if you want to leave the algorithm the best decision based on your data")
     
 
 
-def CircleClustering_test_passed(dataset, target, eps, hardware):
+def CircleClustering_test_passed(dataset, target, eps, hardware, _theta_ = None):
     # get the thetas
     numberOfSamplesInTheDataset = dataset.shape[0]
-    theta = 2 * PI * np.random.rand(numberOfSamplesInTheDataset)
-
+    if type(_theta_) is not np.ndarray:
+        theta = 2 * PI * np.random.rand(numberOfSamplesInTheDataset)
+    else:
+        theta = _theta_
+    
+    
     if hardware == "cpu":
         weights = cc_cpu.computing_weights(dataset)
-        S, C = cc_cpu.C_S(weights, theta)
+        S,C = cc_cpu.C_S(weights, theta)
         theta = cc_cpu.loop(weights, theta, S, C, eps)
         return theta, target
-
+    
     if hardware == "gpu":
-        print(cuda.detect())
         weights = cc_gpu.computing_weights(dataset)
-        S, C = cc_gpu.C_S(weights, theta)
-        theta = cc_gpu.loop_jit(weights, theta, S, C, eps)
+        S,C = cc_gpu.C_S(weights, theta)
+        theta = cc_gpu.loop_gpu(weights, theta, S, C, eps)
         return theta, target
+    
+    

@@ -31,10 +31,12 @@ def loop(matrixOfWeights, theta, S, C, eps):
         
         ''' loop on the theta '''
         for k in range(thetaSize):
+
             old = theta[k]  
             
             ''' find a theta that improves the equation '''
             theta[k] = np.arctan(S[k]/C[k])
+
             if C[k] >= 0:
                 theta[k] += np.pi
             elif S[k] > 0:

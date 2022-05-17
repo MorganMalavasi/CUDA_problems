@@ -1,7 +1,14 @@
 import math
+import numpy as np
 import skcuda.linalg as culinalg
 import pycuda.autoinit
+import pycuda.driver as drv
 import pycuda.gpuarray as gpuarray
+from pycuda.cumath import sqrt as cusqrt
+import warnings
+warnings.filterwarnings("ignore")
+
+culinalg.init()
 
 from pycuda.compiler import SourceModule as SM
 from cuda_kernels import addvecs_codetext_kernel, diagonal_zeros_kernel, elementwise_multiplication_kernel
@@ -10,8 +17,13 @@ addvecs_bcast_gpu = SM(addvecs_codetext_kernel).get_function("add_vectors_broadc
 diagonal_zeros_gpu = SM(diagonal_zeros_kernel).get_function("diagonal_zeros")
 elementwise_multiplication = SM(elementwise_multiplication_kernel).get_function("elementwise_multiplication")
 
+# constants
+PI = np.pi
+
 def computing_weights(dataset):
     matrixOfWeights = sqsum_adddot(dataset, dataset)
+    
+    # set the diagonal of the matrix to zero 
     block = (32, 1, 1)
     grid_x = (matrixOfWeights.shape[0] + (block[0] - 1)) // block[0]
     grid_y = 1
@@ -19,8 +31,10 @@ def computing_weights(dataset):
     size = np.int32(matrixOfWeights.shape[0])
     diagonal_zeros_gpu(matrixOfWeights, size, block = block, grid = grid)
 
+    # sqrt of the values in the matrix
     matrixOfWeights = cusqrt(matrixOfWeights)
 
+    # norm of the matrix
     val = culinalg.norm(matrixOfWeights)
     _weights_ = matrixOfWeights / val
 
@@ -49,6 +63,8 @@ def sqsum_adddot(a,b):
     out : GPUArray
         This holds the euclidean distances residing on GPU.
     """
+    a = convert_f32(a)
+    b = convert_f32(b)
 
     a_gpu = gpuarray.to_gpu(a)
     b_gpu = gpuarray.to_gpu(b)
@@ -150,7 +166,9 @@ def C_S(_weights_, theta):
     return S_GPU, C_GPU
 
 
-def loop(weights, theta, S, C, eps):
+def loop_gpu(weights, theta, S, C, eps):
+    
+    theta = gpuarray.to_gpu(theta)
     block = (32, 1, 1)
     grid_x = (weights.shape[1] + (block[0] - 1)) // block[0]
     grid_y = 1
@@ -163,13 +181,12 @@ def loop(weights, theta, S, C, eps):
     rounds = 0 
     thetaSize = theta.shape[0]
     thetaSize_int32 = np.uint32(thetaSize)
-    
+
     while ok == True:
         ok = False
         rounds += 1
 
         for k in range(thetaSize):
-            # mettere tutto quello che si puo sulla gpu 
             old = theta[k].get().item()
             sin = S[k].get().item()
             cos = C[k].get().item()
@@ -180,17 +197,42 @@ def loop(weights, theta, S, C, eps):
                 tmp += PI
             elif sin > 0:
                 tmp += 2*PI
+
+            tmp_ = np.array([tmp]).astype(np.float64)    
+            theta[k].set(tmp_)
             
             val_cos = math.cos(tmp) - math.cos(old)
             val_sin = math.sin(tmp) - math.sin(old)
+
             val_cos_float32 = np.float32(val_cos)
             val_sin_float32 = np.float32(val_sin)
             val_new_theta = np.float32(tmp)
             k_int32 = np.uint32(k)
-
+           
             kernel_call(grid, block, weights.gpudata,theta.gpudata, C.gpudata, S.gpudata, val_cos_float32, val_sin_float32, val_new_theta, thetaSize, k)
-
+            
             if min(abs(old - tmp), abs(2*PI - old + tmp)) > eps:
                 ok = True
 
     return theta.get()
+
+def convert_f32(a):
+    """
+    Convert to float32 dtype.
+
+    Parameters
+    ----------
+    a : ndarray
+
+    Returns
+    -------
+    out : ndarray
+        Converts to float32 dtype if not already so. This is needed for
+        implementations that work exclusively work such datatype.
+
+    """
+
+    if a.dtype!=np.float32:
+        return a.astype(np.float32)
+    else:
+        return a
