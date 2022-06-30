@@ -5,6 +5,8 @@ import cclustering
 from sklearn.datasets import make_blobs
 from sklearn.preprocessing import StandardScaler
 
+
+
 def doPCA(X, labels, n_dataset):
     pca = PCA(n_components=2)
     components = pca.fit_transform(X)
@@ -44,7 +46,7 @@ listOfDataset = []
 listOfDataset.append((sample0, l0))
 listOfDataset.append((sample1, l1))
 listOfDataset.append((sample2, l2))
-# listOfDataset.append((sample3, l3))
+listOfDataset.append((sample3, l3))
 # listOfDataset.append((sample4, l4))
 # listOfDataset.append((sample5, l5))
 
@@ -67,15 +69,15 @@ def checkResults(array1, array2):
 def printStringDatabase(c):
     print("////////////////DATABASE {0}////////////////".format(c))
 
-def printStringStarted(t):
-    print(" >>>> test nr. {0} <<<<".format(t))
+def printStringStarted(t, p):
+    print(" >>>> test nr. {0} ... precision = {1} <<<<".format(t, p))
 
 def printStringTestPassed():
     print(" ---- passed ----")
 
 def testDB(tuple_, precision, testnr):
     
-    printStringStarted(t = testnr)
+    printStringStarted(t = testnr, p = precision)
     
     valuesCPU = copy(tuple_[0])
     valuesGPU = copy(tuple_[0])
@@ -106,9 +108,3 @@ for eachTuple in listOfDataset:
     testDB(tuple_ = eachTuple, precision = "low", testnr = 1)
     testDB(tuple_ = eachTuple, precision = "medium", testnr = 2)
     # testDB(tuple_ = eachTuple, precision = "high", testnr = 3)
-
-    
-    
-
-
-    

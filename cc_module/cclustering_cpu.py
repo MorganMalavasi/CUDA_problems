@@ -20,6 +20,9 @@ def C_S(matrixOfWeights, theta):
 
 @jit(nopython=True) 
 def loop(matrixOfWeights, theta, S, C, eps):
+
+    PI = np.pi
+    PI = np.float32(PI)
     
     ok = True
     rounds = 0
@@ -32,20 +35,20 @@ def loop(matrixOfWeights, theta, S, C, eps):
         ''' loop on the theta '''
         for k in range(thetaSize):
 
-            old = theta[k]  
+            old = theta[k]
             
             ''' find a theta that improves the equation '''
             theta[k] = np.arctan(S[k]/C[k])
 
             if C[k] >= 0:
-                theta[k] += np.pi
+                theta[k] += PI
             elif S[k] > 0:
-                theta[k] += 2*np.pi
+                theta[k] += 2*PI
                 
             jit_elementwise_multiplication(matrixOfWeights[k,:], C, S, theta, k, old)
 
             ''' exit condition '''
-            if min(abs(old - theta[k]), abs(2*np.pi - old + theta[k])) > eps:
+            if min(abs(old - theta[k]), abs(2*PI - old + theta[k])) > eps:
                 ok = True
     
     return theta

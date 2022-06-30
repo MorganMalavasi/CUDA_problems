@@ -5,6 +5,7 @@ import pycuda.autoinit
 import pycuda.driver as drv
 import pycuda.gpuarray as gpuarray
 from pycuda.cumath import sqrt as cusqrt
+import utils
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -16,9 +17,6 @@ from cuda_kernels import addvecs_codetext_kernel, diagonal_zeros_kernel, element
 addvecs_bcast_gpu = SM(addvecs_codetext_kernel).get_function("add_vectors_broadcast")
 diagonal_zeros_gpu = SM(diagonal_zeros_kernel).get_function("diagonal_zeros")
 elementwise_multiplication = SM(elementwise_multiplication_kernel).get_function("elementwise_multiplication")
-
-# constants
-PI = np.pi
 
 def computing_weights(dataset):
     matrixOfWeights = sqsum_adddot(dataset, dataset)
@@ -63,12 +61,14 @@ def sqsum_adddot(a,b):
     out : GPUArray
         This holds the euclidean distances residing on GPU.
     """
-    a = convert_f32(a)
-    b = convert_f32(b)
+    a = utils.convert_f32(a)
+    b = utils.convert_f32(b)
 
     a_gpu = gpuarray.to_gpu(a)
     b_gpu = gpuarray.to_gpu(b)
     c_gpu = squared_sum(a,b)
+    # culinalg.add_dot      C = alpha * (A B) + beta * C
+    # transb (char) – If ‘T’, compute the product of the transpose of b_gpu.
     return culinalg.add_dot(a_gpu, b_gpu, c_gpu,  transb='T', alpha=-2.0)
 
 def squared_sum(a,b):
@@ -96,6 +96,10 @@ def squared_sum(a,b):
     """
 
     c_gpu = None # Initialize output
+    """
+        Using the Einstein summation convention, many common multi-dimensional, 
+        linear algebraic array operations can be represented in a simple fashion. 
+    """
     c_gpu = addvecs(np.einsum('ij,ij->i',a,a), np.einsum('ij,ij->i',b,b))
     return c_gpu
 
@@ -167,6 +171,9 @@ def C_S(_weights_, theta):
 
 
 def loop_gpu(weights, theta, S, C, eps):
+
+    PI = np.pi
+    PI = np.float32(PI)
     
     theta = gpuarray.to_gpu(theta)
     block = (32, 1, 1)
@@ -198,7 +205,7 @@ def loop_gpu(weights, theta, S, C, eps):
             elif sin > 0:
                 tmp += 2*PI
 
-            tmp_ = np.array([tmp]).astype(np.float64)    
+            tmp_ = np.array([tmp]).astype(np.float32)    
             theta[k].set(tmp_)
             
             val_cos = math.cos(tmp) - math.cos(old)
@@ -215,27 +222,6 @@ def loop_gpu(weights, theta, S, C, eps):
                 ok = True
 
     return theta.get()
-
-def convert_f32(a):
-    """
-    Convert to float32 dtype.
-
-    Parameters
-    ----------
-    a : ndarray
-
-    Returns
-    -------
-    out : ndarray
-        Converts to float32 dtype if not already so. This is needed for
-        implementations that work exclusively work such datatype.
-
-    """
-
-    if a.dtype!=np.float32:
-        return a.astype(np.float32)
-    else:
-        return a
 
 def getData(weights, S, C):
     return weights.get(), S.get(), C.get()

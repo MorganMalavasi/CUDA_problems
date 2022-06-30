@@ -1,6 +1,7 @@
 import numpy as np
 import cclustering_cpu as cc_cpu
 import cclustering_gpu as cc_gpu
+import utils
 
 from numba import cuda
 
@@ -58,8 +59,9 @@ def CircleClustering(dataset, target = None, precision = None, hardware = None, 
 
     hardware    : string (optional)
         Specific hardware to use
-        2 types -> "cpu"
+        3 types -> "cpu"
                 -> "gpu"
+                -> "None" : automatic choice
 
     _theta_     : float (optional) 
         1D Numpy array of float representing the starting random theta
@@ -132,28 +134,31 @@ def CircleClustering_test_passed(dataset, target, eps, hardware, _theta_ = None)
     else:
         theta = _theta_
     
+    theta_f32 = utils.convert_f32(theta)
+    dataset_f32 = utils.convert_f32(dataset)
+    
 
     if hardware == "cpu":
-        weights = cc_cpu.computing_weights(dataset)
-        S,C = cc_cpu.C_S(weights, theta)
-        theta = cc_cpu.loop(weights, theta, S, C, eps)
-        return theta, target
+        weights = cc_cpu.computing_weights(dataset_f32)
+        S,C = cc_cpu.C_S(weights, theta_f32)
+        theta_f32 = cc_cpu.loop(weights, theta_f32, S, C, eps)
+        return theta_f32, target
     
     if hardware == "gpu":
-        weights_gpu = cc_gpu.computing_weights(dataset)
-        S_gpu, C_gpu = cc_gpu.C_S(weights_gpu, theta)
-        theta = cc_gpu.loop_gpu(weights_gpu, theta, S_gpu, C_gpu, eps)
-        return theta, target
+        weights_gpu = cc_gpu.computing_weights(dataset_f32)
+        S_gpu, C_gpu = cc_gpu.C_S(weights_gpu, theta_f32)
+        theta_f32 = cc_gpu.loop_gpu(weights_gpu, theta_f32, S_gpu, C_gpu, eps)
+        return theta_f32, target
 
     if hardware == "hybrid":
-        weights_gpu = cc_gpu.computing_weights(dataset)
-        S_gpu, C_gpu = cc_gpu.C_S(weights_gpu, theta)
+        weights_gpu = cc_gpu.computing_weights(dataset_f32)
+        S_gpu, C_gpu = cc_gpu.C_S(weights_gpu, theta_f32)
         if (weights_gpu.shape[0] > 100000): # redefine the value
-            theta = cc_gpu.loop_gpu(weights_gpu, theta, S_gpu, C_gpu, eps)
+            theta_f32 = cc_gpu.loop_gpu(weights_gpu, theta_f32, S_gpu, C_gpu, eps)
         else:
             weights, S, C = cc_gpu.getData(weights_gpu, S_gpu, C_gpu)
-            theta = cc_cpu.loop(weights, theta, S, C, eps)
-        return theta, target
+            theta_f32 = cc_cpu.loop(weights, theta_f32, S, C, eps)
+        return theta_f32, target
 
 
     
