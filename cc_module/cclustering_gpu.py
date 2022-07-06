@@ -18,7 +18,7 @@ addvecs_bcast_gpu = SM(addvecs_codetext_kernel).get_function("add_vectors_broadc
 diagonal_zeros_gpu = SM(diagonal_zeros_kernel).get_function("diagonal_zeros")
 elementwise_multiplication = SM(elementwise_multiplication_kernel).get_function("elementwise_multiplication")
 
-def computing_weights(dataset):
+def computing_weights(dataset, theta):
     matrixOfWeights = sqsum_adddot(dataset, dataset)
     
     # set the diagonal of the matrix to zero 
@@ -36,7 +36,16 @@ def computing_weights(dataset):
     val = culinalg.norm(matrixOfWeights)
     _weights_ = matrixOfWeights / val
 
-    return _weights_
+    theta_sin = np.asarray(np.sin(theta) , np.float32)
+    theta_cos = np.asarray(np.cos(theta) , np.float32)
+
+    theta_sin_gpu = gpuarray.to_gpu(theta_sin)
+    theta_cos_gpu = gpuarray.to_gpu(theta_cos)
+
+    S_GPU = culinalg.dot(_weights_, theta_sin_gpu)
+    C_GPU = culinalg.dot(_weights_, theta_cos_gpu)  
+
+    return _weights_, S_GPU, C_GPU
 
 
 def sqsum_adddot(a,b):
@@ -156,20 +165,6 @@ def addvecs(a, b, output='gpu'):
         raise Exception("Output type invalid")
     
 
-def C_S(_weights_, theta):
-    theta_sin = np.asarray(np.sin(theta) , np.float32)
-    theta_cos = np.asarray(np.cos(theta) , np.float32)
-
-    theta_gpu = gpuarray.to_gpu(theta)
-    theta_sin_gpu = gpuarray.to_gpu(theta_sin)
-    theta_cos_gpu = gpuarray.to_gpu(theta_cos)
-
-    S_GPU = culinalg.dot(_weights_, theta_sin_gpu)
-    C_GPU = culinalg.dot(_weights_, theta_cos_gpu)
-
-    return S_GPU, C_GPU
-
-
 def loop_gpu(weights, theta, S, C, eps):
 
     PI = np.pi
@@ -205,7 +200,7 @@ def loop_gpu(weights, theta, S, C, eps):
             elif sin > 0:
                 tmp += 2*PI
 
-            tmp_ = np.array([tmp]).astype(np.float32)    
+            tmp_ = np.array([tmp]) 
             theta[k].set(tmp_)
             
             val_cos = math.cos(tmp) - math.cos(old)

@@ -4,6 +4,7 @@ import math
 import cupy as cp
 from numba import jit, cuda, float32
 from sklearn.metrics.pairwise import euclidean_distances
+from numpy.testing import assert_almost_equal
 # ignore warnings for jit
 import warnings
 warnings.filterwarnings("ignore")
@@ -163,7 +164,7 @@ if __name__ == '__main__':
     sample6, l6 = create_dataset_base(samples = 15000, features = 5, centers = 7, display = False, n_dataset = 6)
     sample7, l7 = create_dataset_base(samples = 8000, features = 300, centers = 7, display = False, n_dataset = 7)   # -> !!!not working in cuda base 
     sample8, l8 = create_dataset_base(samples = 5, features = 4, centers = 2, display = False, n_dataset = 8)
-    sample9, l9 = create_dataset_base(samples = 10000, features = 2048, centers = 5, display = False, n_dataset = 9)
+    sample9, l9 = create_dataset_base(samples = 10000, features = 1024, centers = 5, display = False, n_dataset = 9)
     sample10, l10 = create_dataset_base(samples = 15000, features = 2048, centers = 5, display = False, n_dataset = 10)
     sample11, l11 = create_dataset_base(samples = 15500, features = 4096, centers = 8, display = False, n_dataset = 11)
     # sample9, l9 = create_dataset_base(samples = 20000, features = 20, centers = 5, display = False, n_dataset = 9)
@@ -178,15 +179,15 @@ if __name__ == '__main__':
     # listOfDataset.append((sample0, l0))
     # listOfDataset.append((sample1, l1))
     # listOfDataset.append((sample2, l2))
-    # listOfDataset.append((sample3, l3))
-    # listOfDataset.append((sample4, l4))
+    listOfDataset.append((sample3, l3))
+    listOfDataset.append((sample4, l4))
     # listOfDataset.append((sample5, l5))
     # listOfDataset.append((sample6, l6))
-    # listOfDataset.append((sample7, l7))
+    listOfDataset.append((sample7, l7))
     # listOfDataset.append((sample8, l8))
-    # listOfDataset.append((sample9, l9))
+    listOfDataset.append((sample9, l9))
     # listOfDataset.append((sample10, l10))
-    listOfDataset.append((sample11, l11))
+    # listOfDataset.append((sample11, l11))
 
     # creation of the starting points -> theta  |  for each dataset
     PI = np.pi
@@ -201,10 +202,7 @@ if __name__ == '__main__':
 
     ##########################################################################################
     @timeit
-    def cpu_function(thetaToTransform, eps = 0.01, normalize = True):
-        # load the data
-        data = np.copy(thetaToTransform[0])
-        theta = np.copy(thetaToTransform[2])
+    def cpu_function(data, theta, eps = 0.01, normalize = True):
 
         # part 1
         matrixOfWeights = euclidean_distances(data, data)
@@ -226,10 +224,7 @@ if __name__ == '__main__':
     ##########################################################################################
     # alg18
     @timeit
-    def gpu_function(thetaToTransform, eps = 0.01, normalize = True):
-         # load the data
-        data = np.copy(thetaToTransform[0])
-        theta = np.copy(thetaToTransform[2])
+    def gpu_function(data, theta, eps = 0.01, normalize = True):
         
         # part 1
         matrixOfWeights = dist_gpu(data, data, optimize_level=3, output="gpu")
@@ -296,12 +291,17 @@ if __name__ == '__main__':
     for eachTupleBeforeTransformation in listOfInitialTuple:
         counter += 1
         print("DATABASE : {}".format(counter))
+
+        dataCPU = np.copy(eachTupleBeforeTransformation[0])
+        thetaCPU = np.copy(eachTupleBeforeTransformation[2])
+        dataGPU = np.copy(eachTupleBeforeTransformation[0])
+        thetaGPU = np.copy(eachTupleBeforeTransformation[2])
         
         print("CPU ---------------------------------------------------------")
-        matrix_cpu, C_cpu, S_cpu = cpu_function(thetaToTransform = eachTupleBeforeTransformation, eps = 0.001)
+        matrix_cpu, C_cpu, S_cpu = cpu_function(dataCPU, thetaCPU)
         
         print("GPU ---------------------------------------------------------")
-        matrix_gpu, C_gpu, S_gpu = gpu_function(thetaToTransform = eachTupleBeforeTransformation, eps = 0.001)
+        matrix_gpu, C_gpu, S_gpu = gpu_function(dataGPU, thetaGPU)
 
         # print("gpu opt lev 4 ----------------------------------------------")
         # matrix19 = euclidean_distance_function19(thetaToTransform = eachTupleBeforeTransformation, eps = 0.001)
@@ -309,14 +309,21 @@ if __name__ == '__main__':
         
         # check results 
         # with np.printoptions(precision=8, suppress=True):        
+        '''
         print("-------data--------")
         print(eachTupleBeforeTransformation[0])
         print("-------base--------")
         print(matrix_cpu)
         print("///////////////")
         print(matrix_gpu)
+        '''
         
+
         # print(checkResultsTable(matrix_cpu, matrix_gpu))
         print(checkResults(C_cpu, C_gpu))
         print(checkResults(S_cpu, S_gpu))
+        assert_almost_equal(matrix_cpu, matrix_gpu)
+        assert_almost_equal(C_cpu, C_gpu)
+        assert_almost_equal(S_cpu, S_gpu)
+        print("TEST PASSED")
         

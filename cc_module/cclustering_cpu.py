@@ -4,9 +4,12 @@ from numpy import linalg
 from numba import jit
 
 
-def computing_weights(dataset):
+def computing_weights(dataset, theta):
     weights = euclidean_distances(dataset, dataset)
-    return weights / linalg.norm(weights)
+    weights = weights / linalg.norm(weights)
+
+    S, C = C_S(weights, theta)
+    return weights, S, C
 
 @jit
 def C_S(matrixOfWeights, theta):
@@ -15,7 +18,7 @@ def C_S(matrixOfWeights, theta):
 
     cos_t = np.cos(theta)
     C = np.dot(matrixOfWeights, cos_t)
-
+    
     return S, C
 
 @jit(nopython=True) 

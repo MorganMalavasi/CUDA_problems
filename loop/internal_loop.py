@@ -10,6 +10,8 @@ import threading
 # ignore warnings for jit
 import warnings
 warnings.filterwarnings("ignore")
+from numpy.testing import assert_almost_equal
+
 
 def checkResults(array1, array2):
     '''
@@ -154,7 +156,7 @@ if __name__ == '__main__':
     sample2, l2 = create_dataset_base(samples = 4000, features = 7, centers = 10, display = True, n_dataset = 2)
     sample3, l3 = create_dataset_base(samples = 7000, features = 30, centers = 10, display = True, n_dataset = 3)
     sample4, l4 = create_dataset_base(samples = 7000, features = 50, centers = 8, display = False, n_dataset = 4)
-    sample5, l5 = create_dataset_base(samples = 10000, features = 20, centers = 10, display = False, n_dataset = 5)
+    sample5, l5 = create_dataset_base(samples = 10000, features = 1024, centers = 10, display = False, n_dataset = 5)
     sample6, l6 = create_dataset_base(samples = 15000, features = 5, centers = 7, display = False, n_dataset = 6)
     sample7, l7 = create_dataset_base(samples = 8000, features = 300, centers = 7, display = False, n_dataset = 7)   # -> !!!not working in cuda base 
     sample8, l8 = create_dataset_base(samples = 3, features = 4, centers = 2, display = False, n_dataset = 8)
@@ -175,9 +177,9 @@ if __name__ == '__main__':
     # listOfDataset.append((sample2, l2))
     listOfDataset.append((sample3, l3))
     # listOfDataset.append((sample4, l4))
-    # listOfDataset.append((sample5, l5))
+    listOfDataset.append((sample5, l5))
     # listOfDataset.append((sample6, l6))
-    listOfDataset.append((sample7, l7))
+    # listOfDataset.append((sample7, l7))
     # listOfDataset.append((sample8, l8))
     # listOfDataset.append((sample9, l9))
     # listOfDataset.append((sample10, l10))
@@ -826,11 +828,13 @@ if __name__ == '__main__':
         theta_jit_computed3 = jit_algorithm(matrixOfWeights_ = weights_cpu, C_ = C_cpu, S_ = S_cpu, theta_ = theta_cpu, eps = 0.001)
         print(checkResults(theta_cpu_computed, theta_jit_computed3))
 
-        '''
+        
         print("gpu _ version 4 --------------------------------------------------")
         theta_gpu_computed3 = gpu_algorithm3(matrixOfWeights_ = weights_cpu, C_ = C_cpu, S_ = S_cpu, theta_ = theta_cpu, eps = 0.001)
         print(checkResults(theta_cpu_computed, theta_gpu_computed3))
-
+        assert_almost_equal(theta_cpu_computed, theta_gpu_computed3)
+        
+        '''
         print("gpu _ version 5 --------------------------------------------------")
         theta_gpu_computed4 = gpu_algorithm4(matrixOfWeights_ = weights_cpu, C_ = C_cpu, S_ = S_cpu, theta_ = theta_cpu, eps = 0.001)
         print(checkResults(theta_cpu_computed, theta_gpu_computed4))
