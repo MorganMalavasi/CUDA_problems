@@ -7,6 +7,7 @@ from numba import cuda
 
 # constants
 PI = np.pi
+PI = np.float32(PI)
 
 # create only one exception
 class Circleclustering_input_zero(Exception):
@@ -75,10 +76,16 @@ def CircleClustering(dataset, target = None, precision = None, hardware = None, 
 
     # check the input
     try:
-        if dataset.shape[0] == 0 or dataset.shape[1] == 0:
+        # --------------------------------------------------------------------        dataset
+        if type(dataset) != np.ndarray:
+            raise Circleclustering_input_zero("The array is not an ndarray")
+        if len(dataset.shape) == 0 or len(dataset.shape) == 1:
             raise Circleclustering_input_zero("The input shape is incorrect...")
-        # --------------------------------------------------------------------        
-
+        if dataset.shape[0] <= 1:
+            raise Circleclustering_input_zero("The dataset needs two have at least two element")
+        # --------------------------------------------------------------------        precision
+        if precision == None:
+            precision = "low"
         output_str = precision.lower()
         if precision != "high" and precision != "medium" and precision != "low":
             raise Circleclustering_wrong_precision_string("The input string precision is not correct...")
@@ -88,15 +95,15 @@ def CircleClustering(dataset, target = None, precision = None, hardware = None, 
             eps = 0.001
         elif precision == "low":
             eps = 0.01
-        # --------------------------------------------------------------------
+        # --------------------------------------------------------------------        hardware
 
         if hardware == None:
             # automatic search for the hardware
-            hardware = "hybrid"
+            hardware = "cpu"
         else:
             hardware = hardware.lower()
             if hardware != "cpu" and hardware != "gpu":
-                raise Circleclustering_hardware_wrong
+                raise Circleclustering_hardware_wrong("the input string hardware is not correct")
         
         
         
@@ -107,7 +114,9 @@ def CircleClustering(dataset, target = None, precision = None, hardware = None, 
 
     except Circleclustering_input_zero as error:
         print('A New Exception occured:', error.value)
-        print("dataset need to be of size > 0 with number of features > 0")
+        print("Enter an numpy.ndarray with two dimensions")
+        return 1
+        
 
     except Circleclustering_wrong_precision_string as error:
         print('A New Exception occured:', error.value)
@@ -116,6 +125,7 @@ def CircleClustering(dataset, target = None, precision = None, hardware = None, 
         print("-> high")
         print("-> medium")
         print("-> low")
+        return 2
 
     except Circleclustering_hardware_wrong as error:
         print('A New Exception occured:', error.value)
@@ -123,6 +133,7 @@ def CircleClustering(dataset, target = None, precision = None, hardware = None, 
         print("-> cpu")
         print("-> gpu")
         print("leave blank if you want to leave the algorithm the best decision based on your data")
+        return 3
     
 
 
@@ -134,32 +145,15 @@ def CircleClustering_test_passed(dataset, target, eps, hardware, _theta_ = None)
     else:
         theta = _theta_
     
-    theta_f32 = utils.convert_f32(theta)
-    dataset_f32 = utils.convert_f32(dataset)
-    
-
     if hardware == "cpu":
-        weights = cc_cpu.computing_weights(dataset_f32)
-        S,C = cc_cpu.C_S(weights, theta_f32)
-        theta_f32 = cc_cpu.loop(weights, theta_f32, S, C, eps)
-        return theta_f32, target
+        weights, S, C = cc_cpu.computing_weights(dataset, theta)
+        theta = cc_cpu.loop(weights, theta, S, C, eps)
+        return weights, S, C, theta, target
     
     if hardware == "gpu":
-        weights_gpu = cc_gpu.computing_weights(dataset_f32)
-        S_gpu, C_gpu = cc_gpu.C_S(weights_gpu, theta_f32)
-        theta_f32 = cc_gpu.loop_gpu(weights_gpu, theta_f32, S_gpu, C_gpu, eps)
-        return theta_f32, target
-
-    if hardware == "hybrid":
-        weights_gpu = cc_gpu.computing_weights(dataset_f32)
-        S_gpu, C_gpu = cc_gpu.C_S(weights_gpu, theta_f32)
-        if (weights_gpu.shape[0] > 100000): # redefine the value
-            theta_f32 = cc_gpu.loop_gpu(weights_gpu, theta_f32, S_gpu, C_gpu, eps)
-        else:
-            weights, S, C = cc_gpu.getData(weights_gpu, S_gpu, C_gpu)
-            theta_f32 = cc_cpu.loop(weights, theta_f32, S, C, eps)
-        return theta_f32, target
+        weights_gpu, S_gpu, C_gpu = cc_gpu.computing_weights(dataset, theta)
+        theta = cc_gpu.loop_gpu(weights_gpu, theta, S_gpu, C_gpu, eps)
+        return weights_gpu, S_gpu, C_gpu, theta, target
 
 
-    
     
